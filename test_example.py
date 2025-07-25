@@ -7,243 +7,212 @@
 @作者  :dutianxing
 @版本  :1.0
 '''
-import logging,time,websocket,hashlib,ctypes,json,random,os
+
+import os
+import time
+import ctypes
+import json
+import random
+import websocket
+import hashlib
+import subprocess as sp
 from ctypes import *
 import _thread as thread
-from datetime import datetime
 import datetime
-from callpowershell import PowerShell
+from glob import glob
 
-class ImgReport():
+# ============ 内嵌 PowerShell 类 ============
+class PowerShell:
+    def __init__(self, coding):
+        cmd = [self._where('PowerShell.exe'),
+               "-NoLogo", "-NonInteractive",
+               "-Command", "-"]
+        startupinfo = sp.STARTUPINFO()
+        startupinfo.dwFlags |= sp.STARTF_USESHOWWINDOW
+        self.popen = sp.Popen(cmd, stdout=sp.PIPE, stdin=sp.PIPE, stderr=sp.STDOUT, startupinfo=startupinfo)
+        self.coding = coding
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, a, b, c):
+        self.popen.kill()
+
+    def run(self, cmd, timeout=60):
+        b_cmd = cmd.encode(encoding=self.coding)
+        try:
+            b_outs, errs = self.popen.communicate(b_cmd, timeout=timeout)
+        except sp.TimeoutExpired:
+            self.popen.kill()
+            b_outs, errs = self.popen.communicate()
+            errs = "False"
+        try:
+            outs = b_outs.decode('gbk', 'ignore')
+        except UnicodeDecodeError:
+            outs = ""
+            errs = "False"
+        return outs, errs
+
+    @staticmethod
+    def _where(filename, dirs=None, env="PATH"):
+        if dirs is None:
+            dirs = []
+        if not isinstance(dirs, list):
+            dirs = [dirs]
+        if glob(filename):
+            return filename
+        paths = [os.curdir] + os.environ[env].split(os.path.pathsep) + dirs
+        try:
+            return next(os.path.normpath(match)
+                        for path in paths
+                        for match in glob(os.path.join(path, filename))
+                        if match)
+        except (StopIteration, RuntimeError):
+            raise IOError("File not found: %s" % filename)
+
+# ============ 核心逻辑 ============
+class ImgReport:
     def check_clink(self):
-        # 判断进程clink_agent 和 clink_service是否存在
         with PowerShell('GBK') as ps:
-            out1, errs = ps.run("get-process clink_agent  -ErrorAction SilentlyContinue") 
+            out1, errs = ps.run("get-process clink_agent -ErrorAction SilentlyContinue")
         if out1:
             with PowerShell('GBK') as ps:
-                out2, errs = ps.run("get-process clink_service  -ErrorAction SilentlyContinue")
+                out2, errs = ps.run("get-process clink_service -ErrorAction SilentlyContinue")
             if out2:
-                logging.info("clink agent status is running.")
                 return True
-            else:
-                logging.info("clink service status is unusual")
-        else:
-            logging.info("clink agent status is unusual")
         return False
-            
 
     def check_cloudbase(self):
-        #判断cloudbase服务和进程文件是否存在
         with PowerShell('GBK') as ps:
-            out1, errs = ps.run("get-service cloudbase-init  -ErrorAction SilentlyContinue")
+            out1, errs = ps.run("get-service cloudbase-init -ErrorAction SilentlyContinue")
         if out1:
             with PowerShell('GBK') as ps:
-                out2, errs = ps.run("Test-Path 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\Python\Scripts\cloudbase-init.exe'")
+                out2, errs = ps.run(r"Test-Path 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\Python\Scripts\cloudbase-init.exe'")
             if out2.strip() == "True":
-                logging.info("cloudbase is running")
                 return True
-            else:
-                logging.info("cloudbase-init process file is unusual")
-        else:
-            logging.info("cloudbase-init service status is unusual")
         return False
 
     def check_cloudupdate(self):
-        #判断补丁升级功能是否正常，通过判断all.log日志的日期和当前日期相差不超过48小时为准
         try:
-            filetime=os.path.getmtime("C:\\Program Files (x86)\\ctyun\\clink\\Mirror\\CloudUpdate\\logs\\all.log")
-            h=time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(filetime))#再由中间格式转为字符串(str)
-            y =datetime.datetime.strptime(h, '%Y-%m-%d %H:%M:%S')
-            z = datetime.datetime.now()
-            diff = z - y
-            logging.info("log date time is "+str(y))
-            logging.info("now date time is "+str(z))
-            logging.info("the diff time between all.log and now is "+str(diff))
-            if diff.seconds < 172800:
-                logging.info("cloudupdate is running.")
-                return True
-            else:
-                logging.info("cloudupdate is unusual.")
-                return False
+            filetime = os.path.getmtime(r"C:\Program Files (x86)\ctyun\clink\Mirror\CloudUpdate\logs\all.log")
+            y = datetime.datetime.strptime(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(filetime)), '%Y-%m-%d %H:%M:%S')
+            diff = datetime.datetime.now() - y
+            return diff.total_seconds() < 172800
         except OSError:
-            logging.info("[cloudupdate]cloudupdate's log is not exist.")
-            reason="Cloudupdate日志文件不存在。"
             return False
-        
 
 def get_websocket_num():
     with PowerShell('GBK') as ps:
         out, errs = ps.run('(Get-ItemProperty -Path "HKLM:\\SOFTWARE\\ecloudsoft\\Mirror\\ClinkAgent" -Name "VersionCode").VersionCode')
-    agent_ver=int(out.strip())
-    if agent_ver > 101310000:
-        logging.info("Agent version is bigger than 1.30, WEBSOCKET_DESK_REPORT is 9")
-        return 9
-    else:
-        logging.info("Agent version is smaller than 1.30, WEBSOCKET_DESK_REPORT is 7")
-        return 7
+    return 9 if int(out.strip()) > 101310000 else 7
 
 def open_web_socket():
-    logging.info('open websocket')
     APP_ID = 1007
-    local_time = time.time()
-    current_time = int(local_time)
-    #WEBSOCKET_DESK_REPORT = get_websocket_num()
+    current_time = int(time.time())
     WEBSOCKET_DESK_REPORT = 7
     sign = compute_sign(APP_ID, current_time, WEBSOCKET_DESK_REPORT)
     if sign:
         with PowerShell('GBK') as ps:
             out, errs = ps.run("(Get-ItemProperty 'Registry::HKEY_LOCAL_MACHINE\\SOFTWARE\\ecloudsoft\\Mirror\\ClinkAgent' -Name 'WebSocketPort').WebSocketPort")
-            logging.info(out)
             try:
-                temp=int(out.strip())
-            except ValueError:
-                port=9002
-            else:
-                port=out.strip()
-        format_string = "ws://127.0.0.1:"+str(port)+"?appid={0}&sign={1}&t={2}&type={3}"
-        
-        websocket_url = format_string.format(APP_ID, sign, current_time, WEBSOCKET_DESK_REPORT)
-        logging.info(websocket_url)
-        websocket.enableTrace(True)
+                port = int(out.strip())
+            except:
+                port = 9002
+        websocket_url = f"ws://127.0.0.1:{port}?appid={APP_ID}&sign={sign}&t={current_time}&type={WEBSOCKET_DESK_REPORT}"
+        websocket.enableTrace(False)
         ws = websocket.WebSocketApp(websocket_url,
                                     on_open=on_open,
                                     on_message=on_message,
                                     on_error=on_error,
-                                    on_close=on_close)#
-        logging.info(ws.on_error)
-        #ws.on_open = on_open
-        logging.info('ws run forever')
+                                    on_close=on_close)
         ws.run_forever()
-    else:
-        logging.error('cannot get sign')
 
 def on_message(ws, message):
-    logging.info('websocket on message: %s' % message)
-
+    pass
 
 def on_error(ws, error):
-    logging.info('websocket on error:'+repr(error))
-
+    pass
 
 def on_close(ws):
-    logging.info('websocket on close ')
-
+    pass
 
 def on_open(ws):
     def run(*args):
         message = Message(result, remark)
         report_data = ReportData(102, message)
-        logging.info("report data is "+report_data.write())
         json_str = json.dumps(report_data, default=lambda o: o.__dict__, ensure_ascii=False)
         ws.send(json_str)
-        logging.info('websocket send outter network info %s' % str(result))
         ws.close()
     thread.start_new_thread(run, ())
 
-class Message(object):
+class Message:
     def __init__(self, result, remark):
         self.result = result
         self.remark = remark
         self.localtime = int(time.time())
     def write(self):
-        return "{ result:"+str(self.result)+", remark:"+str(self.remark)+", time:"+str(self.localtime)+"}"
+        return f"{{ result:{self.result}, remark:{self.remark}, time:{self.localtime}}}"
 
-class ReportData(object):
+class ReportData:
     def __init__(self, bussType, message):
         self.bussType = bussType
         self.message = message
     def write(self):
-        return "{ bussType:"+str(self.bussType)+", message:"+self.message.write()+"}"
+        return f"{{ bussType:{self.bussType}, message:{self.message.write()}}}"
 
 def compute_sign(app_id, current_time, websocket_type):
-    logging.info('compute sign')
     info = get_secret()
     if info and info.contents.data:
         secret = bytes.decode(info.contents.data)
-        logging.info(secret)
-        input_string = str(app_id) + secret + str(current_time) + str(websocket_type)
-        logging.info(input_string)
-        sign = hashlib.sha256(input_string.encode("utf8")).hexdigest()
-        logging.info(sign)
-        return sign
-    else:
-        return None
+        input_string = f"{app_id}{secret}{current_time}{websocket_type}"
+        return hashlib.sha256(input_string.encode("utf8")).hexdigest()
+    return None
 
 class Info(Structure):
     _fields_ = [("data", c_char_p), ("len", c_int)]
 
 def get_secret():
     try:
-        logging.info('get secret')
-        # C:\\Program Files (x86)\\ctyun\\clink\\Mirror\\ScriptConfig
-        folder = 'C:\\Program Files\\Cloudbase Solutions\\Cloudbase-Init\\exe'
-        dll_path = folder + '\\communicate.dll'
+        folder = r'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\exe'
+        dll_path = folder + r'\communicate.dll'
         lib = ctypes.cdll.LoadLibrary(dll_path)
-        #lib.InitLog()
         lib.GetInfo.argtypes = [c_int]
         lib.GetInfo.restype = POINTER(Info)
-        INFO_SECRET = 5
-        pInfo = lib.GetInfo(INFO_SECRET)
-        return pInfo
-    except WindowsError as e:
-        logging.exception(e)
-        return None
-    except BaseException as e:
-        logging.exception(e)
+        return lib.GetInfo(5)
+    except:
         return None
 
 def execute(has_signal):
-    try:
-        logging.info("++++++++++++++++++++++++++++++++++++++++++Img Report Execute+++++++++++++++++++++++++++++++++++++++++++")
-        if not has_signal:
-            # 创建random
-            n=random.randint(0,2*60*60)
-            current_time=(datetime.datetime.now()+datetime.timedelta(seconds=n)).strftime("%H:%M")
-            logging.info("Restart at "+current_time)
-            with PowerShell('GBK') as ps:
-                outs, errs = ps.run("$env:username")
-            username=outs.strip()
-            execmd=r"""'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\exe\ecloud_img_conf.exe' {'signalId':1,'command':25} """
-            cmd='schtasks.exe /create /RU '+username+' /tn check_report_img_daily /tr "'+execmd+'" /SC ONCE /ST '+current_time+' /F /RL HIGHEST'
-            logging.info(cmd)
-            with PowerShell('GBK') as ps:
-                out, errs = ps.run(cmd)
-                logging.info(out)
-            # 创建daily
-            n=random.randint(0,12*60*60)
-            current_time=(datetime.datetime.now()+datetime.timedelta(seconds=n)).strftime("%H:%M")
-            logging.info("Create check_report_img_daily at "+current_time)
-            with PowerShell('GBK') as ps:
-                outs, errs = ps.run("$env:username")
-            username=outs.strip()
-            execmd=r"""'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\exe\ecloud_img_conf.exe' {'signalId':1,'command':25} """
-            cmd='schtasks.exe /create /RU '+username+' /tn check_report_img_daily /tr "'+execmd+'" /SC DAILY /ST '+current_time+' /RI 5 /DU 9999:59 /F /RL HIGHEST'
-            logging.info(cmd)
-            with PowerShell('GBK') as ps:
-                out, errs = ps.run(cmd)
-                logging.info(out)
-            return True
-        global result
-        global remark
-        ir = ImgReport()
-        if ir.check_clink():
-            if ir.check_cloudbase() and ir.check_cloudupdate():
-                result=1
-                remark='success'
-            else:
-                result=3
-                remark='failure'
+    if not has_signal:
+        next_minute = (datetime.datetime.now() + datetime.timedelta(minutes=1)).replace(second=0, microsecond=0)
+        current_time = next_minute.strftime("%H:%M")
+        with PowerShell('GBK') as ps:
+            outs, errs = ps.run("$env:username")
+        username = outs.strip()
+        execmd = r"""'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\exe\ecloud_img_conf.exe' {'signalId':1,'command':25} """
+        # 创建 ONCE 任务
+        cmd = f'schtasks.exe /create /RU {username} /tn check_report_img_daily /tr "{execmd}" /SC ONCE /ST {current_time} /F /RL HIGHEST'
+        with PowerShell('GBK') as ps:
+            ps.run(cmd)
+        # 创建 DAILY 任务
+        cmd = f'schtasks.exe /create /RU {username} /tn check_report_img_daily /tr "{execmd}" /SC DAILY /ST {current_time} /RI 5 /DU 9999:59 /F /RL HIGHEST'
+        with PowerShell('GBK') as ps:
+            ps.run(cmd)
+        return True
+
+    global result, remark
+    ir = ImgReport()
+    if ir.check_clink():
+        if ir.check_cloudbase() and ir.check_cloudupdate():
+            result, remark = 1, 'success'
         else:
-            result=2
-            remark='failure'
-        logging.info("result is "+str(result)+" and remark is "+remark)
-        open_web_socket()
-    except Exception as e:
-        logging.exception(e)
-    except EOFError as e:
-        logging.error(e)
-    
+            result, remark = 3, 'failure'
+    else:
+        result, remark = 2, 'failure'
+    open_web_socket()
+
+# ============ 启动入口 ============
 if __name__ == '__main__':
-    result=0
-    remark=0
-    input("按回车键退出...")
+    result = 0
+    remark = ''
+    execute(has_signal=False)
