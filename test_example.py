@@ -31,38 +31,82 @@ class SimpleApp:
     
     def run(self):
         """运行应用程序"""
-        print(f"🚀 {self.name} v{self.version}")
-        print("=" * 50)
+        # 设置控制台编码为UTF-8以支持Unicode字符
+        if sys.platform == 'win32':
+            import locale
+            try:
+                # 尝试设置控制台代码页为UTF-8
+                import ctypes
+                ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+                ctypes.windll.kernel32.SetConsoleCP(65001)
+            except:
+                pass
         
-        # 获取系统信息
-        info = self.get_system_info()
-        print("📊 系统信息:")
-        for key, value in info.items():
-            print(f"  {key}: {value}")
-        
-        print("\n⏰ 开始执行任务...")
-        
-        # 模拟一些处理
-        for i in range(5):
-            print(f"  步骤 {i+1}/5: 正在处理...")
-            time.sleep(1)
-        
-        print("\n✅ 任务执行完成!")
-        
-        # 保存结果到文件
-        result_file = "execution_result.json"
-        result = {
-            'app_name': self.name,
-            'version': self.version,
-            'execution_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'status': 'success',
-            'system_info': info
-        }
-        
-        with open(result_file, 'w', encoding='utf-8') as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
-        
-        print(f"📁 结果已保存到: {result_file}")
+        try:
+            print(f"🚀 {self.name} v{self.version}")
+            print("=" * 50)
+            
+            # 获取系统信息
+            info = self.get_system_info()
+            print("📊 系统信息:")
+            for key, value in info.items():
+                print(f"  {key}: {value}")
+            
+            print("\n⏰ 开始执行任务...")
+            
+            # 模拟一些处理
+            for i in range(5):
+                print(f"  步骤 {i+1}/5: 正在处理...")
+                time.sleep(1)
+            
+            print("\n✅ 任务执行完成!")
+            
+            # 保存结果到文件
+            result_file = "execution_result.json"
+            result = {
+                'app_name': self.name,
+                'version': self.version,
+                'execution_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'success',
+                'system_info': info
+            }
+            
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            
+            print(f"📁 结果已保存到: {result_file}")
+            
+        except UnicodeEncodeError:
+            # 如果Unicode字符仍然无法显示，使用ASCII替代
+            print(f">> {self.name} v{self.version}")
+            print("=" * 50)
+            
+            info = self.get_system_info()
+            print(">> 系统信息:")
+            for key, value in info.items():
+                print(f"  {key}: {value}")
+            
+            print("\n>> 开始执行任务...")
+            
+            for i in range(5):
+                print(f"  步骤 {i+1}/5: 正在处理...")
+                time.sleep(1)
+            
+            print("\n>> 任务执行完成!")
+            
+            result_file = "execution_result.json"
+            result = {
+                'app_name': self.name,
+                'version': self.version,
+                'execution_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'success',
+                'system_info': info
+            }
+            
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            
+            print(f">> 结果已保存到: {result_file}")
         
         # 等待用户输入（如果有控制台）
         try:
