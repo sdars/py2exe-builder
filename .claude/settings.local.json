@@ -19,7 +19,9 @@
       "Bash(./check_project.sh:*)",
       "Bash(find:*)",
       "Bash(git pull:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(unzip:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
