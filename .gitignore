@@ -48,8 +48,3 @@ server.pid
 *.tmp
 *.temp
 python-*.exe
-
-# Large files
-*.zip
-py2exe.zip
-dist_original/

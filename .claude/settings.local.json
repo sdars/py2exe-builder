@@ -21,7 +21,15 @@
       "Bash(git pull:*)",
       "Bash(git push:*)",
       "Bash(unzip:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git filter-repo:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch py2exe.zip' --prune-empty --tag-name-filter cat -- --all)",
+      "Bash(git stash:*)",
+      "Bash(git reset:*)"
     ],
     "deny": []
   }
