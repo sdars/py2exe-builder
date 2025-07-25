@@ -246,3 +246,4 @@ def execute(has_signal):
 if __name__ == '__main__':
     result=0
     remark=0
+    input("按回车键退出...")
