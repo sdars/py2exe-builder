@@ -16,7 +16,8 @@
       "Bash(wget:*)",
       "Bash(mkdir:*)",
       "Bash(chmod:*)",
-      "Bash(./check_project.sh:*)"
+      "Bash(./check_project.sh:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

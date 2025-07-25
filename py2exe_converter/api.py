@@ -73,6 +73,8 @@ class PyToExeAPI:
                     options['onefile'] = True
                 if request.form.get('name'):
                     options['name'] = request.form.get('name')
+                if request.form.get('no_auto_deps') == 'true':
+                    options['auto_install_deps'] = False
                 
                 # 处理图标文件
                 if 'icon' in request.files and request.files['icon'].filename:
@@ -385,6 +387,10 @@ WEB_CONSOLE_HTML = '''
                         <input type="checkbox" id="noconsole" name="noconsole" checked>
                         <label for="noconsole">无控制台窗口</label>
                     </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="auto_deps" name="auto_deps" checked>
+                        <label for="auto_deps">自动安装依赖</label>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn" id="convertBtn">开始转换</button>
@@ -450,6 +456,7 @@ WEB_CONSOLE_HTML = '''
             // 添加复选框值
             formData.append('onefile', document.getElementById('onefile').checked);
             formData.append('noconsole', document.getElementById('noconsole').checked);
+            formData.append('no_auto_deps', !document.getElementById('auto_deps').checked);
             
             // 显示加载状态
             document.getElementById('loading').style.display = 'block';

@@ -56,6 +56,8 @@ def main():
                         help='显示详细输出')
     parser.add_argument('--quiet', '-q', action='store_true',
                         help='静默模式，只显示错误')
+    parser.add_argument('--no-auto-deps', action='store_true',
+                        help='不自动安装缺失的依赖包')
     
     args = parser.parse_args()
     
@@ -96,7 +98,8 @@ def main():
         'onefile': not args.onedir,
         'distpath': args.output,
         'workpath': args.workdir,
-        'clean': not args.no_clean
+        'clean': not args.no_clean,
+        'auto_install_deps': not args.no_auto_deps
     }
     
     if args.icon:
