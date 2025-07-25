@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(./dist/test_app)",
+      "Bash(wine:*)",
+      "Bash(export WINEPREFIX=$HOME/.wine-pyinstaller)",
+      "Bash(export WINEARCH=win64)",
+      "Bash(wget:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(./check_project.sh:*)"
+    ],
+    "deny": []
+  }
+}

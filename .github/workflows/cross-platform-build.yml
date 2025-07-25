@@ -1,0 +1,88 @@
+name: Cross Platform Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: linux-x64
+            binary_extension: ''
+          - os: windows-latest
+            artifact_name: windows-x64
+            binary_extension: '.exe'
+          - os: macos-latest
+            artifact_name: macos-x64
+            binary_extension: ''
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build application
+      run: |
+        pyinstaller test_app.spec --clean --noconfirm
+        pyinstaller api_test_app.spec --clean --noconfirm
+    
+    - name: Test application (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        dist\test_app.exe
+      timeout-minutes: 2
+    
+    - name: Test application (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        ./dist/test_app
+      timeout-minutes: 2
+    
+    - name: Package artifacts
+      run: |
+        mkdir release
+        cp dist/test_app${{ matrix.binary_extension }} release/
+        cp dist/api_test_app${{ matrix.binary_extension }} release/
+        cp README.md release/
+        cp requirements.txt release/
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: release/
+        retention-days: 30
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

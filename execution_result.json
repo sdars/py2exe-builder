@@ -1,0 +1,13 @@
+{
+  "app_name": "Python转EXE测试应用",
+  "version": "1.0.0",
+  "execution_time": "2025-07-25 17:56:35",
+  "status": "success",
+  "system_info": {
+    "platform": "linux",
+    "python_version": "3.11.2 (main, Apr 28 2025, 14:11:48) [GCC 12.2.0]",
+    "current_dir": "/root/py2exe",
+    "executable": "/root/py2exe/dist/test_app",
+    "start_time": "2025-07-25 17:56:30"
+  }
+}
