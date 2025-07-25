@@ -32,7 +32,8 @@ jobs:
         converter = PyToExeConverter()
         deps_result = converter.check_and_install_dependencies('test_example.py')
         if not deps_result['success']:
-            print(f'Warning: {deps_result.get(\"error\", \"Unknown error\")}')
+            error_msg = deps_result.get('error', 'Unknown error')
+            print(f'Warning: {error_msg}')
         else:
             print('All dependencies installed successfully')
         "
@@ -89,7 +90,8 @@ jobs:
         converter = PyToExeConverter()
         deps_result = converter.check_and_install_dependencies('test_example.py')
         if not deps_result['success']:
-            print(f'Warning: {deps_result.get(\"error\", \"Unknown error\")}')
+            error_msg = deps_result.get('error', 'Unknown error')
+            print(f'Warning: {error_msg}')
         else:
             print('All dependencies installed successfully')
         "
