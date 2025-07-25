@@ -15,7 +15,7 @@ class SimpleApp:
     """简单的应用程序类"""
     
     def __init__(self):
-        self.name = "Python转EXE测试应用"
+        self.name = "Python to EXE Test App"
         self.version = "1.0.0"
         self.start_time = datetime.now()
     
@@ -77,26 +77,26 @@ class SimpleApp:
             print(f"📁 结果已保存到: {result_file}")
             
         except UnicodeEncodeError:
-            # 如果Unicode字符仍然无法显示，使用ASCII替代
-            print(f">> {self.name} v{self.version}")
+            # If Unicode characters cannot be displayed, use ASCII alternatives
+            print(f">> Python to EXE Test App v{self.version}")
             print("=" * 50)
             
             info = self.get_system_info()
-            print(">> 系统信息:")
+            print(">> System Info:")
             for key, value in info.items():
                 print(f"  {key}: {value}")
             
-            print("\n>> 开始执行任务...")
+            print("\n>> Starting tasks...")
             
             for i in range(5):
-                print(f"  步骤 {i+1}/5: 正在处理...")
+                print(f"  Step {i+1}/5: Processing...")
                 time.sleep(1)
             
-            print("\n>> 任务执行完成!")
+            print("\n>> Tasks completed!")
             
             result_file = "execution_result.json"
             result = {
-                'app_name': self.name,
+                'app_name': 'Python to EXE Test App',
                 'version': self.version,
                 'execution_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'status': 'success',
@@ -106,18 +106,18 @@ class SimpleApp:
             with open(result_file, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
             
-            print(f">> 结果已保存到: {result_file}")
+            print(f">> Results saved to: {result_file}")
         
-        # 等待用户输入（如果有控制台）
+        # Wait for user input (if console is available)
         try:
-            input("\n按回车键退出...")
+            input("\nPress Enter to exit...")
         except:
-            # 如果没有控制台，等待3秒后退出
+            # If no console, wait 3 seconds before exit
             time.sleep(3)
 
 
 def main():
-    """主函数"""
+    """Main function"""
     app = SimpleApp()
     app.run()
 
