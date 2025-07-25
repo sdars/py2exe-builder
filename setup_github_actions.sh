@@ -147,11 +147,64 @@ if git remote get-url origin &> /dev/null; then
     echo -e "\n按回车继续推送，或按Ctrl+C取消..."
     read -r
     
+    # 尝试推送，如果失败则处理冲突
     if git push -u origin main; then
         echo -e "${GREEN}✅ 代码已成功推送到GitHub${NC}"
     else
-        echo -e "${RED}❌ 推送失败，请检查认证信息${NC}"
-        echo -e "${YELLOW}💡 提示: 如需创建Token，访问: https://github.com/settings/tokens${NC}"
+        echo -e "${YELLOW}⚠️  推送失败，可能存在冲突${NC}"
+        
+        # 检查是否是因为远程有新提交导致的冲突
+        git fetch origin main 2>/dev/null
+        if git log HEAD..origin/main --oneline | grep -q .; then
+            echo -e "${YELLOW}检测到远程仓库有新的提交，需要处理冲突${NC}"
+            echo -e "\n${BLUE}请选择处理方式:${NC}"
+            echo -e "1. ${GREEN}强制推送${NC} (用本地代码覆盖远程，推荐)"
+            echo -e "2. ${YELLOW}先拉取再推送${NC} (合并远程更改)"
+            echo -e "3. ${RED}取消推送${NC}"
+            
+            while true; do
+                read -p "请输入选择 (1/2/3，默认为1): " choice
+                choice=${choice:-1}
+                
+                case $choice in
+                    1)
+                        echo -e "${YELLOW}正在强制推送...${NC}"
+                        if git push -u origin main --force; then
+                            echo -e "${GREEN}✅ 强制推送成功${NC}"
+                        else
+                            echo -e "${RED}❌ 强制推送失败，请检查认证信息${NC}"
+                            echo -e "${YELLOW}💡 提示: 如需创建Token，访问: https://github.com/settings/tokens${NC}"
+                        fi
+                        break
+                        ;;
+                    2)
+                        echo -e "${YELLOW}正在拉取远程更改...${NC}"
+                        if git pull origin main --no-rebase; then
+                            echo -e "${GREEN}✅ 合并完成，正在推送...${NC}"
+                            if git push -u origin main; then
+                                echo -e "${GREEN}✅ 推送成功${NC}"
+                            else
+                                echo -e "${RED}❌ 推送失败，请检查认证信息${NC}"
+                                echo -e "${YELLOW}💡 提示: 如需创建Token，访问: https://github.com/settings/tokens${NC}"
+                            fi
+                        else
+                            echo -e "${RED}❌ 拉取失败，请手动处理冲突${NC}"
+                        fi
+                        break
+                        ;;
+                    3)
+                        echo -e "${YELLOW}已取消推送${NC}"
+                        break
+                        ;;
+                    *)
+                        echo -e "${RED}无效选择，请输入 1、2 或 3${NC}"
+                        ;;
+                esac
+            done
+        else
+            echo -e "${RED}❌ 推送失败，请检查认证信息${NC}"
+            echo -e "${YELLOW}💡 提示: 如需创建Token，访问: https://github.com/settings/tokens${NC}"
+        fi
     fi
 else
     echo -e "${YELLOW}⚠️  远程仓库未配置，跳过推送${NC}"

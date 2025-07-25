@@ -17,7 +17,9 @@
       "Bash(mkdir:*)",
       "Bash(chmod:*)",
       "Bash(./check_project.sh:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
