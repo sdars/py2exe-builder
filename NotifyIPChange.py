@@ -6,6 +6,8 @@ import os
 import ipaddress
 import datetime
 
+chcp 65001
+
 # ---------------- 配置区 ----------------
 PUSH_URL = "https://sctapi.ftqq.com/SCT71314TA-GDdP0hf5dPCIHOH4uUYy11p4.send"
 
