@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['test_example.py'],
+    ['NotifyIPChange.py'],
     pathex=[],
     binaries=[],
     datas=[],
