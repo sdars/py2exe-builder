@@ -8,7 +8,7 @@ import datetime
 import locale
 
 # ---------------- 配置区 ----------------
-PUSH_URL = "https://sctapi.ftqq.com/SCT71314TA-GDdP0hf5dPCIHOH4uUYy11p4.send"
+PUSH_URL = "1"
 
 IPV4_APIS = [
     "http://ipv4.ip.sb",
