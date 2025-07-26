@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['/tmp/py2exe_uploads/test_example.py'],
+    ['/tmp/py2exe_uploads/NotifyIPChange.py'],
     pathex=[],
     binaries=[],
     datas=[],
