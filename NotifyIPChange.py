@@ -5,9 +5,7 @@ import requests
 import os
 import ipaddress
 import datetime
-import sys
-import io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import locale
 
 # ---------------- 配置区 ----------------
 PUSH_URL = "https://sctapi.ftqq.com/SCT71314TA-GDdP0hf5dPCIHOH4uUYy11p4.send"
@@ -32,6 +30,16 @@ IPV6_APIS = [
 # 获取当前脚本所在目录，记录保存在同目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RECORD_FILE = os.path.join(BASE_DIR, "ip_record.txt")
+
+
+def get_lang():
+    lang_code, encoding = locale.getdefaultlocale()
+    if lang_code and 'zh' in lang_code.lower():
+        return 'zh'
+    return 'en'
+
+
+LANG = get_lang()
 
 
 def is_valid_ipv4(ip):
@@ -66,7 +74,7 @@ def try_multiple_sources(urls, version):
             return ip
         except:
             continue
-    return f"{version} 不可用"
+    return f"{version} unavailable" if LANG == 'en' else f"{version} 不可用"
 
 
 def load_last_record():
@@ -95,34 +103,41 @@ def push_notification(title, content, short=None):
             json_data = resp.json()
             if json_data.get("code") == 0:
                 push_id = json_data.get("data", {}).get("pushid", "未知")
-                print(f"推送成功，推送ID: {push_id}")
+                if LANG == 'zh':
+                    print(f"推送成功，推送ID: {push_id}")
+                else:
+                    print(f"Push successful. Push ID: {push_id}")
             else:
-                print(f"推送失败（业务错误）：{json_data}")
+                print(f"推送失败（业务错误）：{json_data}" if LANG == 'zh' else f"Push failed (logic): {json_data}")
         else:
-            print(f"推送失败，状态码：{resp.status_code}")
+            print(f"推送失败，状态码：{resp.status_code}" if LANG == 'zh' else f"Push failed, status code: {resp.status_code}")
     except Exception as e:
-        print("推送异常：", e)
+        print("推送异常：" if LANG == 'zh' else "Push error:", e)
 
 
 def main():
-    print("正在获取当前公网 IP 地址...")
+    print("正在获取当前公网 IP 地址..." if LANG == 'zh' else "Getting current public IP address...")
     ipv4 = try_multiple_sources(IPV4_APIS, "IPv4")
     ipv6 = try_multiple_sources(IPV6_APIS, "IPv6")
 
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    result = f"### IP 地址变更通知\n\n**时间：** {now}\n\n**IPv4：** `{ipv4}`\n\n**IPv6：** `{ipv6}`"
     record_text = f"IPv4: {ipv4}\nIPv6: {ipv6}"
+
+    # Markdown 内容用于推送，不受终端语言影响
+    push_content = (
+        f"### IP 地址变更通知\n\n**时间：** {now}\n\n**IPv4：** `{ipv4}`\n\n**IPv6：** `{ipv6}`"
+    )
 
     last = load_last_record()
     if last != record_text:
-        print("IP 发生变化或无记录，更新记录并推送通知。")
+        print("IP 发生变化或无记录，更新记录并推送通知。" if LANG == 'zh' else "IP changed or no record. Updating and sending notification.")
         save_record(record_text)
         short_summary = f"IPv4: {ipv4} | IPv6: {ipv6}"
-        push_notification("IP变更通知", result, short=short_summary)
+        push_notification("IP变更通知", push_content, short=short_summary)
     else:
-        print("IP 无变化，无需推送。")
+        print("IP 无变化，无需推送。" if LANG == 'zh' else "No change in IP. No notification sent.")
 
-    print("当前状态：")
+    print("当前状态：" if LANG == 'zh' else "Current status:")
     print(record_text)
 
 
