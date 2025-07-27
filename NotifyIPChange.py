@@ -13,10 +13,13 @@ import io
 from collections import Counter
 
 # ---------- 修复 Windows 控制台中文乱码 ----------
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32" and sys.stdout:
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    except Exception:
+        pass
 
-# ---------- 系统语言自动识别（仅用于控制台提示）----------
+# ---------- 系统语言自动识别（控制台用） ----------
 try:
     lang_code, _ = locale.getlocale()
     if not lang_code:
@@ -29,8 +32,8 @@ except Exception:
 
 LANG = 'zh' if 'zh' in str(lang_code).lower() else 'en'
 
-# ---------- 配置区域 ----------
-PUSH_URL = "https://sctapi.ftqq.com/SCT71314TA-GDdP0hf5dPCIHOH4uUYy11p4.send"
+# ---------- 配置区 ----------
+PUSH_URL = "https://sctapi.ftqq.com/SCT71314TA-GDdP0hf5dPCIHOH4uUYy11p4.send"  # ← 改为你自己的 Server酱推送地址
 IP_APIS = [
     ("https://whois.pconline.com.cn/ipJson.jsp?ip=&json=true", lambda r: r.get("ip")),
     ("https://cdid.c-ctrip.com/model-poc2/h", lambda r: r.strip()),
@@ -81,7 +84,7 @@ def extract_majority_ip(results):
     most_common_ip, _ = Counter(valid_ips).most_common(1)[0]
     return most_common_ip
 
-# ---------- 推送内容（锁定中文） ----------
+# ---------- 推送内容（固定中文） ----------
 def build_push_content_zh(current_ip, results, now):
     lines = []
     for url, res in results:
@@ -89,6 +92,7 @@ def build_push_content_zh(current_ip, results, now):
         prefix = "✅" if is_main else "⚠️"
         short_url = url.split("//")[-1].split("/")[0]
         lines.append(f"- {prefix} [{short_url}]({url}) → `{res}`")
+
     detail_block = "\n".join(lines)
     return (
         f"### 🛰️ 公网 IP 变更通知\n\n"
@@ -127,7 +131,7 @@ def push_notification(title, content, short=None):
     except Exception as e:
         print("推送异常：", e)
 
-# ---------- 主程序 ----------
+# ---------- 主函数 ----------
 def main():
     print("正在获取公网 IP..." if LANG == 'zh' else "Getting public IP address...")
     results = get_all_ips()
